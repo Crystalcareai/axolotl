@@ -12,23 +12,12 @@ class SparseMoeBlock(nn.Module):
         self.top_k = top_k
         self.gate = gate
         self.experts = FusedExperts(
-            experts=experts,
             hidden_dim=hidden_dim,
             ffn_dim=ffn_dim,
             num_experts=num_experts,
             top_k=top_k,
             activation=experts[0].act_fn
         )
-
-    def _post_training(self, model, name):
-        # get original weights back: reverse the concat + stack in the fused experts
-        w1s, w3s = torch.split(torch.unbind(self.experts.experts.weight, dim=0), 2, dim=1)
-        w2s = torch.unbind(self.experts.output_experts.weight, dim=0)
-
-        # TODO: recreate MoE class with original weights
-        experts = []
-        for i in range(self.num_experts):
-            pass
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         batch_size, sequence_length, hidden_dim = hidden_states.shape
