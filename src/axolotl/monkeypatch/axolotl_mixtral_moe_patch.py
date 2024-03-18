@@ -1,4 +1,4 @@
-# axolotl_mixtal_moe_patch.py
+# axolotl_mixtral_moe_patch.py
 
 import torch
 import torch.nn as nn
