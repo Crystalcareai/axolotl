@@ -8,6 +8,7 @@ from transformers.integrations import is_deepspeed_zero3_enabled
 
 from axolotl.monkeypatch.mixtral import patch_mixtral_moe_forward_zero3
 from axolotl.monkeypatch.utils import get_unpad_data
+from axolotl.monkeypatch.moe import GLUMLP, MLP, ParallelExperts
 
 SUPPORTED_MULTIPACK_MODEL_TYPES = [
     "mixtral",
@@ -23,7 +24,8 @@ SUPPORTED_MULTIPACK_MODEL_TYPES = [
 def patch_for_multipack(model_type, model_name=None):
     if model_type == "mixtral":
         transformers.models.mixtral.modeling_mixtral._get_unpad_data = (  # pylint: disable=protected-access
-            get_unpad_data
+            get_unpad_data,
+            patch_mixtral_with_scatter_moe(model)
         )
         if is_deepspeed_zero3_enabled():
             patch_mixtral_moe_forward_zero3()
