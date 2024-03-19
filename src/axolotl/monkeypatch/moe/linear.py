@@ -3,7 +3,7 @@ Adapted from:
 https://github.com/shawntan/scattermoe
 https://arxiv.org/abs/2403.08245
 """
-import math
+
 import torch
 import torch.nn as nn
 from axolotl.monkeypatch.moe import ops
@@ -129,10 +129,13 @@ class ParallelExperts(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         
-        # Create the expert weights on the CPU
-        self.expert_weights = torch.zeros(
-            (num_experts, output_size, input_size),
-            dtype=torch.float16
+        # Create the expert weights on the specified device
+        self.expert_weights = nn.Parameter(
+            torch.empty(
+                (num_experts, output_size, input_size),
+                dtype=torch.float16,
+                device=device
+            )
         )
         torch.nn.init.kaiming_uniform_(self.expert_weights, a=math.sqrt(5))
     
@@ -140,12 +143,18 @@ class ParallelExperts(nn.Module):
                 padded_block_idxs, expert_offsets,
                 gates=None, grouped_in=False, grouped_out=False):
         
-        # Move the required expert weights to the GPU
-        expert_weights_gpu = self.expert_weights[sorted_expert_idxs].to(inputs.device)
+        # Ensure all tensors are on the same device as the expert weights
+        inputs = inputs.to(self.expert_weights.device)
+        sorted_expert_idxs = sorted_expert_idxs.to(self.expert_weights.device)
+        sorted_scattered_idxs = sorted_scattered_idxs.to(self.expert_weights.device)
+        padded_block_idxs = padded_block_idxs.to(self.expert_weights.device)
+        expert_offsets = expert_offsets.to(self.expert_weights.device)
+        if gates is not None:
+            gates = gates.to(self.expert_weights.device)
         
-        # Apply ParallelLinear on the GPU
+        # Apply ParallelLinear on the inputs and expert weights
         results = ParallelLinear.apply(
-            inputs, expert_weights_gpu.permute(0, 2, 1), k,
+            inputs, self.expert_weights, k,
             sorted_expert_idxs, sorted_scattered_idxs,
             padded_block_idxs, expert_offsets,
             gates, grouped_in, grouped_out

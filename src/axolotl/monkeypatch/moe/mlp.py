@@ -43,15 +43,18 @@ class FusedExperts(nn.Module):
                     [experts[i].w1.weight.detach(), experts[i].w3.weight.detach()],
                     dim=0
                 )
-                self.experts.expert_weights[i].copy_(expert_weight)
-                self.output_experts.expert_weights[i].copy_(experts[i].w2.weight.detach())
+                self.experts.expert_weights[i].copy_(expert_weight.to(device))
+                self.output_experts.expert_weights[i].copy_(experts[i].w2.weight.detach().to(device))
     
     def forward(
         self, x: torch.Tensor, routing_weights: torch.Tensor, selected_experts: torch.Tensor
     ):
+        # Ensure all tensors are on the same device as the expert weights
+        x = x.to(self.experts.expert_weights.device)
+        routing_weights = routing_weights.to(self.experts.expert_weights.device)
+        selected_experts = selected_experts.to(self.experts.expert_weights.device)
         x_shape = x.size()
         x = x.view(-1, x_shape[-1])
-        
         with torch.no_grad():
             sorted_expert_idxs, sorted_scattered_idxs = ops.flatten_and_sort(
                 selected_experts
@@ -59,7 +62,7 @@ class FusedExperts(nn.Module):
             padded_block_idxs, expert_offsets = ops.padded_block_indices(
                 sorted_expert_idxs, self.num_experts
             )
-        
+
         h, gates = self.experts(
             x,
             self.top_k,
@@ -70,7 +73,6 @@ class FusedExperts(nn.Module):
             grouped_out=True,
         ).chunk(2, dim=-1)
         h = self.activation(gates) * h
-        
         y = self.output_experts(
             h,
             1,
@@ -81,6 +83,5 @@ class FusedExperts(nn.Module):
             grouped_in=True,
             gates=routing_weights,
         )
-        
         y = y.view(*x_shape[:-1], y.size(-1))
         return y
