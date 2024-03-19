@@ -3,7 +3,7 @@ Adapted from:
 https://github.com/shawntan/scattermoe
 https://arxiv.org/abs/2403.08245
 """
-
+import math
 import torch
 import torch.nn as nn
 from axolotl.monkeypatch.moe import ops
@@ -123,27 +123,32 @@ def parallel_linear(inputs, expert_weights, k,
     return results
 
 class ParallelExperts(nn.Module):
-    def __init__(self, num_experts, input_size, output_size, device) -> None:
+    def __init__(self, num_experts, input_size, output_size, device=None):
         super().__init__()
-        self.weight = nn.Parameter(
-            torch.empty(num_experts, output_size, input_size, device=device)
-        )
         self.num_experts = num_experts
         self.input_size = input_size
         self.output_size = output_size
-
-    def extra_repr(self):
-        return 'num_experts={}, input_size={}, output_size={}'.format(
-            self.num_experts, self.input_size, self.output_size)
-
+        
+        # Create the expert weights on the CPU
+        self.expert_weights = torch.zeros(
+            (num_experts, output_size, input_size),
+            dtype=torch.float16
+        )
+        torch.nn.init.kaiming_uniform_(self.expert_weights, a=math.sqrt(5))
+    
     def forward(self, inputs, k, sorted_expert_idxs, sorted_scattered_idxs,
                 padded_block_idxs, expert_offsets,
                 gates=None, grouped_in=False, grouped_out=False):
-
+        
+        # Move the required expert weights to the GPU
+        expert_weights_gpu = self.expert_weights[sorted_expert_idxs].to(inputs.device)
+        
+        # Apply ParallelLinear on the GPU
         results = ParallelLinear.apply(
-            inputs, self.weight.permute(0, 2, 1), k,
+            inputs, expert_weights_gpu.permute(0, 2, 1), k,
             sorted_expert_idxs, sorted_scattered_idxs,
             padded_block_idxs, expert_offsets,
             gates, grouped_in, grouped_out
         )
+        
         return results
