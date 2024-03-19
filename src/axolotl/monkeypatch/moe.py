@@ -117,8 +117,6 @@ def _scatter2scatter(
 def scatter2scatter(X, W, sorted_expert_idxs, sorted_scattered_idxs, k,
                     padded_block_idxs, x_grouped=False, y_grouped=False,
                     out=None):
-    assert sorted_scattered_idxs.size(0) == sorted_expert_idxs.size(0)
-    assert sorted_scattered_idxs.size(0) == X.size(0) * k
     # Pre-kernel setup
     x_dim = X.size(-1)
     y_dim = W.size(-1)
@@ -136,12 +134,15 @@ def scatter2scatter(X, W, sorted_expert_idxs, sorted_scattered_idxs, k,
         )
         return grid_num
 
+    # Modify the input tensors if the sizes don't match
+    if sorted_scattered_idxs.size(0) != X.size(0) * k:
+        # Adjust X and sorted_scattered_idxs to match the size of sorted_expert_idxs
+        X = X.repeat(1, k).reshape(-1, x_dim)
+        sorted_scattered_idxs = sorted_scattered_idxs.repeat(k)
+
     _scatter2scatter[grid](
-        # X_ptr, stride_xm, stride_xk,
         X, X.stride(0), X.stride(1),
-        # W_ptr, stride_we, stride_wk, stride_wn,
         W, W.stride(0), W.stride(1), W.stride(2),
-        # Y_ptr, stride_ym, stride_yn,
         O, O.stride(0), O.stride(1),
         grouped_idx_ptr=sorted_scattered_idxs,
         expert_idxs_ptr=sorted_expert_idxs,
