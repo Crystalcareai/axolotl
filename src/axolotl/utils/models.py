@@ -48,8 +48,6 @@ from axolotl.utils.bench import log_gpu_memory_usage
 from axolotl.utils.chat_templates import chat_templates
 from axolotl.utils.dict import DictDefault
 from axolotl.utils.lora_embeddings import get_linear_embedding_layers
-from axolotl.monkeypatch.moe import patch_mixtral_with_scatter_moe
-
 
 LOG = logging.getLogger("axolotl")
 
@@ -484,8 +482,6 @@ def load_model(
         from axolotl.monkeypatch.mistral_attn_hijack_flash import (
             replace_mistral_attn_with_flash_attn,
         )
-        if cfg.model_config_type == 'mixtral':
-            patch_for_multipack(cfg.model_config_type, model_name=cfg.model_type)
 
         LOG.info("patching mistral with flash attention")
         replace_mistral_attn_with_flash_attn(packed=cfg.sample_packing)
@@ -892,7 +888,9 @@ def load_model(
 
     if cfg.adapter in ["lora", "qlora"]:
         if cfg.gradient_checkpointing:
-            model.gradient_checkpointing_enable()
+            model.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs=cfg.gradient_checkpointing_kwargs
+            )
         if (
             cfg.load_in_8bit or cfg.load_in_4bit
         ) and not skip_prepare_model_for_kbit_training:
@@ -1104,5 +1102,3 @@ def load_lora(model, cfg, inference=False, config_only=False):
         setup_quantized_peft_meta_for_training(model)
 
     return model, lora_config
-
-
