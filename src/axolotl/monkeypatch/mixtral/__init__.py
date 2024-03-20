@@ -48,3 +48,9 @@ def patch_mixtral_moe_forward_zero3() -> None:
 
     MixtralBLockSparseTop2MLP.forward = mlp_forward
     MixtralSparseMoeBlock.forward = moe_forward
+
+from .scatter import patch_mixtral_scatter
+
+def patch_for_scatter(cfg):
+    if cfg.get('mixtral_use_scatter', False):
+        patch_mixtral_scatter()
