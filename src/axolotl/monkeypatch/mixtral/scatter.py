@@ -4,13 +4,7 @@ from axolotl.monkeypatch.moe import GLUMLP
 from torch.nn import functional as F
 from transformers.activations import ACT2FN
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 def patch_mixtral_scatter() -> None:
-    logger.info("Patching MixtralSparseMoeBlock with ScatterMoE")  # Add this line
-    
     class MixtralSparseMoeBlock(nn.Module):
         _scatter_moe_used = False
 
@@ -21,8 +15,10 @@ def patch_mixtral_scatter() -> None:
             self.num_experts = config.num_local_experts
             self.top_k = config.num_experts_per_tok
             
-            # gating
+            # Gating
             self.gate = nn.Linear(self.hidden_dim, self.num_experts, bias=False)
+            
+            # Initialize GLUMLP with weights from the original MixtralBLockSparseTop2MLP
             self.moe_mlp = GLUMLP(
                 input_size=self.hidden_dim,
                 hidden_size=self.ffn_dim,
@@ -30,30 +26,31 @@ def patch_mixtral_scatter() -> None:
                 top_k=self.top_k,
                 activation=ACT2FN[config.hidden_act]
             )
+            self.moe_mlp.load_state_dict(self.moe_mlp.state_dict())
 
         def forward(self, hidden_states: torch.Tensor):
-            """ """
             if not MixtralSparseMoeBlock._scatter_moe_used:
-                logger.info("Using MixtralSparseMoeBlock with ScatterMoE")  # Modify this line
+                print("Using MixtralSparseMoeBlock with ScatterMoE")
                 MixtralSparseMoeBlock._scatter_moe_used = True
-            
+
             batch_size, sequence_length, hidden_dim = hidden_states.shape
             hidden_states = hidden_states.view(-1, hidden_dim)
 
-            # router_logits: (batch * sequence_length, n_experts)
+            # Router logits
             router_logits = self.gate(hidden_states)
             routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
             routing_weights, selected_experts = torch.topk(routing_weights, self.top_k, dim=-1)
             routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
 
-            # we cast back to the input dtype
+            # Cast to input dtype
             routing_weights = routing_weights.to(hidden_states.dtype)
 
+            # Pass through GLUMLP
             final_hidden_states = self.moe_mlp(hidden_states, routing_weights, selected_experts)
             final_hidden_states = final_hidden_states.view(batch_size, sequence_length, hidden_dim)
+
             return final_hidden_states, router_logits
 
     from transformers.models.mixtral import modeling_mixtral
     modeling_mixtral.MixtralSparseMoeBlock = MixtralSparseMoeBlock
     delattr(modeling_mixtral, 'MixtralBLockSparseTop2MLP')
-    logger.info("Patched MixtralSparseMoeBlock with ScatterMoE")  # Add this line
