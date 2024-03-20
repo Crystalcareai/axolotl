@@ -49,8 +49,16 @@ def patch_mixtral_moe_forward_zero3() -> None:
     MixtralBLockSparseTop2MLP.forward = mlp_forward
     MixtralSparseMoeBlock.forward = moe_forward
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from .scatter import patch_mixtral_scatter
 
 def patch_for_scatter(cfg):
+    logger.info(f"Checking for 'mixtral_use_scatter' in config: {cfg}")  # Add this line
     if cfg.get('mixtral_use_scatter', False):
+        logger.info("'mixtral_use_scatter' is set to True, patching MixtralSparseMoeBlock")  # Add this line
         patch_mixtral_scatter()
+    else:
+        logger.info("'mixtral_use_scatter' is not set or set to False, not patching MixtralSparseMoeBlock")  # Add this line
