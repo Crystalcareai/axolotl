@@ -26,18 +26,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+
 def patch_for_multipack(model_type, model_name=None, cfg=None):
-    logger.info(f"Patching for model type: {model_type}")  # Add this line
     if model_type == 'mixtral':
         transformers.models.mixtral.modeling_mixtral._get_unpad_data = get_unpad_data
         if is_deepspeed_zero3_enabled():
             patch_mixtral_moe_forward_zero3()
         
-        if cfg is not None:
-            logger.info(f"Configuration passed to patch_for_multipack: {cfg}")  # Add this line
-            patch_for_scatter(cfg)
-        else:
-            logger.warning("Configuration is None, not patching for scatter")  # Add this line
+        patch_for_scatter(cfg)
+        
     elif model_type == "qwen2":
         transformers.models.qwen2.modeling_qwen2._get_unpad_data = (  # pylint: disable=protected-access
             get_unpad_data
