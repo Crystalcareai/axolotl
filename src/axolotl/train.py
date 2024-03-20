@@ -101,6 +101,9 @@ def train(
     if cfg.unfrozen_parameters:
         freeze_layers_except(model, cfg.unfrozen_parameters)
 
+    if cfg.model_config_type in SUPPORTED_MULTIPACK_MODEL_TYPES:
+        patch_for_multipack(cfg.model_config_type, cfg.base_model_config, cfg)
+
     trainer = setup_trainer(
         cfg,
         train_dataset,
