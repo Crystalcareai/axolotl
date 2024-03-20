@@ -22,6 +22,7 @@ from axolotl.utils.dict import DictDefault
 from axolotl.utils.freeze import freeze_layers_except
 from axolotl.utils.models import load_model, load_tokenizer
 from axolotl.utils.trainer import setup_trainer
+from axolotl.monkeypatch.multipack import SUPPORTED_MULTIPACK_MODEL_TYPES, patch_for_multipack
 
 try:
     from optimum.bettertransformer import BetterTransformer
