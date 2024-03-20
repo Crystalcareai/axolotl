@@ -4,9 +4,15 @@ from axolotl.monkeypatch.moe import GLUMLP
 from torch.nn import functional as F
 from transformers.activations import ACT2FN
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def patch_mixtral_scatter() -> None:
+    logger.info("Patching MixtralSparseMoeBlock with ScatterMoE")  # Add this line
+    
     class MixtralSparseMoeBlock(nn.Module):
-        _scatter_moe_used = False  # Add this line
+        _scatter_moe_used = False
 
         def __init__(self, config):
             super().__init__()
@@ -27,10 +33,10 @@ def patch_mixtral_scatter() -> None:
 
         def forward(self, hidden_states: torch.Tensor):
             """ """
-            if not MixtralSparseMoeBlock._scatter_moe_used:  # Add this line
-                print("Using MixtralSparseMoeBlock with ScatterMoE")  # Add this line
-                MixtralSparseMoeBlock._scatter_moe_used = True  # Add this line
-
+            if not MixtralSparseMoeBlock._scatter_moe_used:
+                logger.info("Using MixtralSparseMoeBlock with ScatterMoE")  # Modify this line
+                MixtralSparseMoeBlock._scatter_moe_used = True
+            
             batch_size, sequence_length, hidden_dim = hidden_states.shape
             hidden_states = hidden_states.view(-1, hidden_dim)
 
@@ -50,3 +56,4 @@ def patch_mixtral_scatter() -> None:
     from transformers.models.mixtral import modeling_mixtral
     modeling_mixtral.MixtralSparseMoeBlock = MixtralSparseMoeBlock
     delattr(modeling_mixtral, 'MixtralBLockSparseTop2MLP')
+    logger.info("Patched MixtralSparseMoeBlock with ScatterMoE")  # Add this line
