@@ -11,11 +11,7 @@ from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer
 from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
-SUPPORTED_AUTO_WRAP_MODEL_TYPES = [
-    "llama",
-    "mistral",
-    "mixtral",
-]
+SUPPORTED_AUTO_WRAP_MODEL_TYPES = ['llama', 'mistral', 'mixtral', 'gemmoe']
 
 
 def get_wrapping_policy_factory(model_type):
