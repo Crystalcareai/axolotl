@@ -405,6 +405,7 @@ def load_datasets(
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         total_num_steps=total_num_steps,
+        freeze_experts=cfg.freeze_experts,
     )
 
 
@@ -422,6 +423,7 @@ def load_rl_datasets(
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         total_num_steps=total_num_steps,
+        freeze_experts=cfg.freeze_experts,
     )
 
 

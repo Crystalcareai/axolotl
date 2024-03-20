@@ -165,6 +165,11 @@ def _create_freeze_parameters_hook(ranges_to_freeze: List[Tuple[int, int]]) -> C
 
     return freeze_parameters_hook
 
+def freeze_layers_except_router(model):
+    for name, param in model.named_parameters():
+        if "router" not in name:
+            param.requires_grad = False
+
 
 class LayerNamePattern:
     """

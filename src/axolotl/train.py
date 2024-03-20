@@ -45,6 +45,7 @@ class TrainDatasetMeta:
     train_dataset: Dataset
     eval_dataset: Optional[Dataset] = None
     total_num_steps: Optional[int] = None
+    freeze_experts: bool = False
 
 
 def train(
@@ -100,6 +101,8 @@ def train(
 
     if cfg.unfrozen_parameters:
         freeze_layers_except(model, cfg.unfrozen_parameters)
+    if dataset_meta.freeze_experts: 
+        freeze_layers_except_router(model)
 
     trainer = setup_trainer(
         cfg,
