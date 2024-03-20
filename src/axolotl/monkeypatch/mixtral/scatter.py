@@ -6,6 +6,8 @@ from transformers.activations import ACT2FN
 
 def patch_mixtral_scatter() -> None:
     class MixtralSparseMoeBlock(nn.Module):
+        _scatter_moe_used = False  # Add this line
+
         def __init__(self, config):
             super().__init__()
             self.hidden_dim = config.hidden_size
@@ -25,6 +27,10 @@ def patch_mixtral_scatter() -> None:
 
         def forward(self, hidden_states: torch.Tensor):
             """ """
+            if not MixtralSparseMoeBlock._scatter_moe_used:  # Add this line
+                print("Using MixtralSparseMoeBlock with ScatterMoE")  # Add this line
+                MixtralSparseMoeBlock._scatter_moe_used = True  # Add this line
+
             batch_size, sequence_length, hidden_dim = hidden_states.shape
             hidden_states = hidden_states.view(-1, hidden_dim)
 
